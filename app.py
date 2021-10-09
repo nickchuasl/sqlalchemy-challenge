@@ -27,10 +27,6 @@ Base.prepare(engine, reflect = True)
 Measurement = Base.classes.measurement
 Station = Base.classes.station
 
-
-
-
-
 #################################################
 # Flask Setup
 #################################################
@@ -48,10 +44,10 @@ def welcome():
         f"/api/v1.0/precipitation<br/>"
         f"/api/v1.0/stations<br/>"
         f"/api/v1.0/tobs<br/>"
-        f"Search the minimum, average and maximum temperature with start date only:<br/>"
-        f"Note to enter the dates in this format dd/(spell the first three letters of the month)/yyyy<br/>"
-        f"/api/v1.0/app22a<br/>"
-        f"/api/v1.0/"
+        f"<br/>"
+        f"You can search the minimum, average and maximum temperature with start date and/or end date by entering the following: /api/v1.0/[start date]/[end date (optional)]:<br/>"
+        f"Note dates MUST be entered in this format: dd-(spell the first three letters of the month)-yyyy<br/>"
+        
         
     )
 
@@ -61,7 +57,24 @@ def welcome():
 @app.route("/api/v1.0/precipitation")
 def prcp():
     session = Session(engine)
-    results = session.query(Measurement.date, Measurement. prcp).all()
+
+    #Find the maximum date in the database
+    max_date = session.query(func.max(Measurement.date)).all()
+
+    max_date_only = max_date[0][0]
+    max_date_only
+
+    #Convert the string type date into date format
+    datetime_object = datetime.datetime.strptime(max_date_only, '%Y-%m-%d')
+    datetime_object= datetime.datetime.date(datetime_object)
+
+    # Calculate the date 1 year ago from the last data point in the database
+    twelves_months_ago_prcp = datetime_object - relativedelta(months=+12)
+    twelves_months_ago_prcp
+
+
+    results = session.query(Measurement.date, Measurement. prcp).\
+        filter(Measurement.date > twelves_months_ago_prcp).filter(Measurement.date < datetime_object).all()
 
     session.close()
 
@@ -72,9 +85,7 @@ def prcp():
         percipitation_dict["prcp"] = prcp
         percipitation.append(percipitation_dict)
 
-    # Convert list of tuples into normal list
-    #all_names = list(np.ravel(results))
-
+    
     return jsonify(percipitation)
 
 #/api/v1.0/stations
@@ -126,9 +137,6 @@ def tobs():
         temperature_dict["date"] = date
         temperature_dict["tobs"] = tobs
         temperature.append(temperature_dict)
-
-    # Convert list of tuples into normal list
-    #all_names = list(np.ravel(results))
 
     return jsonify(temperature)
 
@@ -200,7 +208,7 @@ def min_avg_max_temp_start_end_dates(start, end):
 
        
         
-    return jsonify(temperature) #& f"Start date: {start} and End date: {end}"
+    return jsonify(temperature) 
 
 
 
